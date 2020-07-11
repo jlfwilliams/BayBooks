@@ -1,0 +1,11 @@
+# Config files #
+################
+*.idea/
+
+# Virtual Environment #
+#######################
+venv/
+
+# OS files #
+############
+*.DS_Store
