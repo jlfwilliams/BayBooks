@@ -2,10 +2,12 @@
 
 import math
 import os.path
-from datetime import date
-from operator import attrgetter
 import click
 import requests
+from datetime import date
+from operator import attrgetter
+
+
 from bs4 import BeautifulSoup
 from tqdm import tqdm
 # from rauth.service import OAuth1Service, OAuth1Session
