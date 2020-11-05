@@ -119,13 +119,18 @@ def retrieve_rating_data(user, update, want, have):
             # if book isbn was not found then information is lacking so dont bother calculating the bay rate
             if book.isbn is not None:
                 book.priority = calculate_priority(book)
+    # else:
+    #     df = pd.read_csv('./books.csv')
+    #     book_list = []
+    #     for row in df.items():
+    #         row['Title']
 
-        # sort the book list by bay rating
-        book_list.sort(key=attrgetter('priority'), reverse=True)
+    # sort the book list by bay rating
+    book_list.sort(key=attrgetter('priority'), reverse=True)
 
-        write_booklist_to_file(book_list, filename)
+    write_booklist_to_file(book_list, filename)
 
-        write_booklist_to_csv(book_list)
+    write_booklist_to_csv(book_list)
 
     print_file_contents(filename)
 
@@ -137,13 +142,27 @@ def calculate_priority(book):
     # with a max value of 20 and a theoretical minimum of 2. The bay average    #
     # contributes a maximum of 10 points while the log function it self is also #
     # limited to 10.                                                            #
+    book.bay_average_rating = calculate_bay_rating(book.num_per_star)
+    ##### Traditional log graph priority function ####
     shift_up_down = -40
     shift_left_right = 3
     bend = 25
     angle = 5.3
-    book.bay_average_rating = calculate_bay_rating(book.num_per_star)
     priority = 2 * book.bay_average_rating + \
                ((bend * math.log(book.months_since_added + shift_left_right)) + shift_up_down) / angle
+    #################################################
+
+    ##### HRRN sheduling alg priority function #####
+    # calculate service time
+    # words_per_month = 1500 * 30
+    # service_time_in_months = (book.page_count * book.average_words_per_page) / words_per_month
+    # # calculate ratio (wait + service) / service
+    # if service_time_in_months > 0:
+    #     ratio = (book.months_since_added + service_time_in_months) / service_time_in_months
+    # else:
+    #     ratio = book.months_since_added / 3
+    # priority = ratio * 2 + book.bay_average_rating
+    ################################################
     return priority
 
 
