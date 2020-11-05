@@ -9,3 +9,7 @@ venv/
 # OS files #
 ############
 *.DS_Store
+
+# Data files #
+##############
+*.csv

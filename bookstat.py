@@ -7,9 +7,11 @@ import requests
 from datetime import date
 from operator import attrgetter
 
-
+import pandas as pd
 from bs4 import BeautifulSoup
 from tqdm import tqdm
+
+
 # from rauth.service import OAuth1Service, OAuth1Session
 
 
@@ -21,6 +23,8 @@ class Book:
     num_per_star = []  # ie num_per_star[0] = total of 5 stars, num_per_star[1] total of 4 stars ect.
     bay_average_rating = 0
     months_since_added = 0
+    page_count = 0
+    average_words_per_page = 0
     priority = 0  # Priority = 2 * BayRating + (months_since_added/2)
 
     def __str__(self):
@@ -73,6 +77,25 @@ def calculate_bay_rating(star_list):
 #   TODO: store list books that dont have isbns and print them all at the end of the output
 #   TODO: figure out how to run program remotely using virtual env
 
+def write_booklist_to_csv(book_list):
+    # make headers
+    column_names = ['Title', 'isbn', 'Avg Rating', 'Ratings Count',
+                    '5 star', '4 star', '3 star', '2 star', '1 star',
+                    'Bay Avg', 'Months in List', 'Priority', 'Page Count', 'Avg words per page']
+    # make tuple data list
+    data = []
+    for book in book_list:
+        book_tuple = (book.title, book.isbn, book.average_rating, book.ratings_count, book.num_per_star[0],
+                      book.num_per_star[1], book.num_per_star[2], book.num_per_star[3], book.num_per_star[4],
+                      book.bay_average_rating, book.months_since_added, book.priority, book.page_count,
+                      book.average_words_per_page)
+        data += [book_tuple]
+    # make dataframe
+    df = pd.DataFrame(data=data, columns=column_names)
+    # write to csv
+    df.to_csv('books.csv', index=False, header=True)
+
+
 @click.command()
 @click.option('--user', '-r', default='Finn', type=str, help='Define user string.')
 @click.option('--update', '-u', is_flag=True, help='Force an update of data.')
@@ -83,6 +106,65 @@ def retrieve_rating_data(user, update, want, have):
     book_list = []
 
     # creates a filename based on the specified commandline options
+    filename = create_filename(have, user, want)
+
+    # if update has been specified, then perform goodreads request and update file content
+    if update or not os.path.isfile(filename):
+
+        # retrieves goodreads book data
+        goodreads_data_request(book_list, user, want, have)
+
+        # passes goodreads data to a function that returns the bayesian rating
+        for book in book_list:
+            # if book isbn was not found then information is lacking so dont bother calculating the bay rate
+            if book.isbn is not None:
+                book.priority = calculate_priority(book)
+
+        # sort the book list by bay rating
+        book_list.sort(key=attrgetter('priority'), reverse=True)
+
+        write_booklist_to_file(book_list, filename)
+
+        write_booklist_to_csv(book_list)
+
+    print_file_contents(filename)
+
+
+def calculate_priority(book):
+    # This is a special function designed to limit the contribution of time the #
+    # longer the book remains on the shelf. It's a modified log base 2 function #
+    # with some tuning hard coded tuning values. The returns a priority number  #
+    # with a max value of 20 and a theoretical minimum of 2. The bay average    #
+    # contributes a maximum of 10 points while the log function it self is also #
+    # limited to 10.                                                            #
+    shift_up_down = -40
+    shift_left_right = 3
+    bend = 25
+    angle = 5.3
+    book.bay_average_rating = calculate_bay_rating(book.num_per_star)
+    priority = 2 * book.bay_average_rating + \
+               ((bend * math.log(book.months_since_added + shift_left_right)) + shift_up_down) / angle
+    return priority
+
+
+def write_booklist_to_file(book_list, filename):
+    with open(filename, 'w') as outputFile:
+        # write total num of books in list to the file
+        outputFile.write('There are ' + str(len(book_list)) + ' books in the list.\n')
+
+        # prints to file formatted information of books
+        for book in book_list:
+            outputFile.write(book.__str__() + '\n')
+
+
+def print_file_contents(filename):
+    # opens file with book information for specified user and option and prints to console
+    with open(filename, 'r') as outputFile:
+        for line in outputFile:
+            print(line)
+
+
+def create_filename(have, user, want):
     filename = '/Users/cubes/Documents/BookRatingFiles/' + user + 'books-'
     if want and have:
         filename += 'all.txt'
@@ -92,46 +174,7 @@ def retrieve_rating_data(user, update, want, have):
         filename += 'have.txt'
     else:
         filename += 'have.txt'
-
-    # if update has been specified, then perform goodreads request and update file content
-    if update or not os.path.isfile(filename):
-        with open(filename, 'w') as outputFile:
-            # retrieves goodreads book data
-            goodreads_data_request(book_list, user, want, have)
-
-            # passes goodreads data to a function that returns the bayesian rating
-            for book in book_list:
-                # if book isbn was not found then information is lacking so dont bother calculating the bay rate
-                if book.isbn is not None:
-                    book.bay_average_rating = calculate_bay_rating(book.num_per_star)
-
-                    # This is a special function designed to limit the contribution of time the #
-                    # longer the book remains on the shelf. It's a modified log base 2 function #
-                    # with some tuning hard coded tuning values. The returns a priority number  #
-                    # with a max value of 20 and a theoretical minimum of 2. The bay average    #
-                    # contributes a maximum of 10 points while the log function it self is also #
-                    # limited to 10.                                                            #
-                    SHIFT_UP_DOWN = -40
-                    shift_left_right = 3
-                    bend = 25
-                    angle = 5.3
-                    book.priority = 2 * book.bay_average_rating + \
-                        ((bend * math.log(book.months_since_added + shift_left_right)) + SHIFT_UP_DOWN) / angle
-
-            # sort the book list by bay rating
-            book_list.sort(key=attrgetter('priority'), reverse=True)
-
-            # write total num of books in list to the file
-            outputFile.write('There are ' + str(len(book_list)) + ' books in the list.\n')
-
-            # prints to file formatted information of books
-            for book in book_list:
-                outputFile.write(book.__str__() + '\n')
-
-    # opens file with book information for specified user and option and prints to console
-    with open(filename, 'r') as outputFile:
-        for line in outputFile:
-            print(line)
+    return filename
 
 
 # Retrieves book data as well as reviews from www.goodreads.com
