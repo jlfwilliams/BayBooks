@@ -20,7 +20,7 @@ class Book:
     isbn = ''
     average_rating = 0.0
     ratings_count = 0
-    num_per_star = []  # ie num_per_star[0] = total of 5 stars, num_per_star[1] total of 4 stars ect.
+    num_per_star = [0, 0, 0, 0, 0]  # ie num_per_star[0] = total of 5 stars, num_per_star[1] total of 4 stars ect.
     bay_average_rating = 0
     months_since_added = 0
     page_count = 0
