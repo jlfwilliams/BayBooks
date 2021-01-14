@@ -4,6 +4,7 @@ import math
 import os.path
 import click
 import requests
+import random
 from datetime import date
 from operator import attrgetter
 
@@ -76,6 +77,13 @@ def calculate_bay_rating(star_list):
 #   TODO: might be able to store data in static database entry
 #   TODO: store list books that dont have isbns and print them all at the end of the output
 #   TODO: figure out how to run program remotely using virtual env
+#   NOTE: you could add another cmdline argument for the specifying of the prioirity calculating method
+#           that way you could have seperate functions for each of the possible priority functions and just toggle
+#           between them.
+
+#   Note: a rework of the ticket function could be made so that a couple tickets could be issued
+#       for a book being under a month old and a single ticket could be issued for each month a book has been on the list
+#       every new feature that's deemed useful could be weighted using tickets and then added to the pool
 
 def write_booklist_to_csv(book_list):
     # make headers
@@ -125,6 +133,7 @@ def retrieve_rating_data(user, update, want, have):
     #     for row in df.items():
     #         row['Title']
 
+    print_random_ticket_priority(book_list)
     # sort the book list by bay rating
     book_list.sort(key=attrgetter('priority'), reverse=True)
 
@@ -133,6 +142,19 @@ def retrieve_rating_data(user, update, want, have):
     write_booklist_to_csv(book_list)
 
     print_file_contents(filename)
+
+
+def print_random_ticket_priority(book_list):
+
+    ticket_total = 0
+    ticket_bowl = []
+    for book in book_list:
+        ticket_total += round(book.priority)
+        for i in range(0, round(book.priority)):
+            ticket_bowl.append(book.title)
+
+    ticket_num = random.randint(0, ticket_total)
+    print(ticket_bowl[ticket_num])
 
 
 def calculate_priority(book):
